@@ -26,7 +26,7 @@ let createNewUser = async data => {
     })
 }
 
-let hashUserPassword = (pw) => { // băm lại mật khẩu 
+let hashUserPassword = async (pw) => { // băm lại mật khẩu 
     return new Promise((thanhcong, thatbai) => { // trả về một promise 
         try {
             var hash = bcrypt.hashSync(pw, salt); // sử lý băm pw
@@ -37,7 +37,7 @@ let hashUserPassword = (pw) => { // băm lại mật khẩu
     })
 }
 
-let getAllUser =  () => {
+let getAllUser = async  () => {
     return new Promise( async (thanhcong,thatbai)=>{ // xử lý bất đồng bộ 
         try {
             let users = await db.User.findAll({
@@ -93,7 +93,7 @@ let updateUserData = (data) => {
     })
 }
 
-let deleteUser = (userId) => {
+let deleteUser = async (userId) => {
     return new Promise ( async (thanhcong,thatbai)=>{
         try{
             var user = await db.User.findOne({

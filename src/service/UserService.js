@@ -9,10 +9,12 @@ let handleUserLogin = (email, password) => {
             let userData = {}
             let isExist = await checkUserEmail(email) // check Email có tồn tại trong database
 
+
+
             if(isExist){
                 
                 let user = await db.User.findOne({
-                    attributes: ['email', 'password', 'roleId'],
+                    attributes: ['email', 'password', 'roleId','firstName','lastName'],
                     where :{email : email},
                     raw : true
                 })
@@ -112,9 +114,11 @@ let createNewUser =  (data) => {
                     firstName: data.firstName,
                     lastName: data.lastName,
                     address: data.address,
-                    gender: data.gender === '1' ? true : false,
+                    gender: data.gender,
                     roleId: data.roleId,
+                    positionId : data.positionId,
                     phonenumber: data.phonenumber,
+                    image: data.avatar
                 })
                 thanhcong({
                     errCode:0,
@@ -155,25 +159,36 @@ let deleteUser = (id) => {
 let updateUser = (data) => {
     return new Promise(async (thanhcong,thatbai) => {
         try {
-            if(!data.id){
+            if(!data.id || !data.roleId || !data.positionId || !data.gender){
+            // if(!data.id){
+                console.log("check 1")
                 thanhcong({
-                    errCode : 0,
-                    messageCode : 'update thành công'
+                    errCode : 2,
+                    messageCode : 'Id 2 không tồn tại'
                 })    
             }
             let user = await db.User.findOne({
                 where : {id : data.id}
             })
+            console.log("check 2")
             if(!user){
                 thanhcong({
                     errCode : 1,
                     messageCode : 'Người dùng không tồn tại'
                 })
             }
+            console.log("check 3")
             
             user.firstName = data.firstName
             user.lastName = data.lastName
             user.address = data.address
+            user.roleId = data.roleId
+            user.positionId = data.positionId
+            user.gender = data.gender
+            user.phonenumber = data.phonenumber
+            if(data.avatar){
+                user.image = data.avatar
+            }
 
             await user.save();
 
@@ -201,11 +216,37 @@ let hashUserPassword = (pw) => { // băm lại mật khẩu
     })
 }
 
+let getAllCodeService = (type) => {
+    return new Promise ( async (thanhcong,thaibai) => {
+        try {
+            if(!type){
+                thanhcong({
+                    errorCode : 1,
+                    messageCode : "THIẾU THAM SỐ TRUYỀN VÀO"
+                })
+            }else{
+                let res = {}
+                let allCode = await db.Allcode.findAll({
+                    raw : true,
+                    where : {type : type }
+                })
+                res.errCode = 0
+                res.data = allCode
+                thanhcong(res)
+            }
+
+            
+        } catch (error) {
+            thaibai(error)
+        }
+    })
+}
 
 module.exports = {
     handleUserLogin,
     getAllUser,
     createNewUser,
     deleteUser,
-    updateUser
+    updateUser,
+    getAllCodeService
 }

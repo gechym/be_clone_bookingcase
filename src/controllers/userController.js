@@ -7,24 +7,25 @@ let handleLogin = async (req,res) => {
     let email = req.body.email
     let password = req.body.password
 
-    console.log('- ', email,password);
     
     if(!email || !password){
         
-        res.status(500).json({
+        res.status(500).json({ // trả về lỗi 500 sẽ rơi vô catch bên FE để log lỗi ra view
             ErrCode : 1,
             message : 'Không được để trống phần nào'
         })
+    }else{
+        let userData = await UserService.handleUserLogin(email, password);
+        res.status(200).json({
+            errCode : userData.errCode,
+            errMessage : userData.errMessage,
+            user : userData.user
+        })
     }
-    let userData = await UserService.handleUserLogin(email, password);
 
-    console.log('tets' ,userData)
 
-    res.status(200).json({
-       errCode : userData.errCode,
-       errMessage : userData.errMessage,
-       user : userData.user
-    })
+
+
 }
 
 let handleGetAllUser = async (req, res) => {
@@ -37,14 +38,11 @@ let handleGetAllUser = async (req, res) => {
             users : []
         })
     }
-    
     let users = await UserService.getAllUser(id)
-    console.log('123' , users)
-
     return res.status(200).json({
         errCode : 0,
         errMessage : 'oke',
-        users 
+        users : users
     })
 }
 
@@ -79,8 +77,22 @@ let handleEditUser = async (req,res) => {
     }else{
         console.log('check')
         let message = await UserService.updateUser(data)
-        
         res.status(200).json(message)
+    }
+}
+
+let getAllCode = async (req, res) => {
+    try {
+        await setTimeout( async () => {
+            let data = await UserService.getAllCodeService(req.query.type)
+            res.status(200).json(data)
+        },1000)
+    } catch (error) { // trường hợp ko kết nối đc server
+        console.log("check error" ,error)
+        res.status(200).json({
+            errCode: -1,
+            errMessage : "LỖI KẾT NỐI SERVER"
+        })
     }
 }
 
@@ -91,4 +103,5 @@ module.exports = {
     handleCreateNewUser,
     handleEditUser,
     handleDeleteUser,
+    getAllCode,
 }
