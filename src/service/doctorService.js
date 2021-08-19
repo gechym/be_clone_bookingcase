@@ -46,7 +46,7 @@ let getAllDoctors = () => {
                     // include: [], // define columns that you want to show
                     exclude: ['password', 'image'] // define columns that you don't want 
                 },
-                order: [['firstName', 'ASC']],
+                order: [['firstName', 'ASC']],// sắp xếp theo
                 raw : true
             })
             thanhcong({
@@ -62,7 +62,11 @@ let getAllDoctors = () => {
 let saveDetailInfoDoctor = (data) => {
     return new Promise( async (thanhcong,thatbai) => {
         try {
-            if(!data.doctorId || !data.contentHTML || !data.contentMarkdown || !data.action){
+            if(    !data.doctorId 
+                || !data.contentHTML    || !data.contentMarkdown    || !data.action
+                || !data.selectedPrice  || !data.selectedProvince   || !data.selectedPayment
+                || !data.nameClinic     || !data.addressClinic      || !data.note
+            ){
                 thanhcong({
                     errCode : -1,
                     message : "LỖI THIẾU THAM SỐ"
@@ -103,7 +107,38 @@ let saveDetailInfoDoctor = (data) => {
                         })
                     }
                 }
+                let DoctorInfor = await db.Doctor_infor.findOne({
+                    where : {
+                        doctorId : data.doctorId,
+                    },
+                    raw : false
+                })
+    
+                if(DoctorInfor){// update
+                    DoctorInfor.doctorId = data.doctorId
+                    DoctorInfor.priceId = data.selectedPrice
+                    DoctorInfor.provinceId = data.selectedProvince
+                    DoctorInfor.paymentId = data.selectedPayment
+                    DoctorInfor.nameClinic = data.nameClinic
+                    DoctorInfor.addressClinic = data.addressClinic
+                    DoctorInfor.note = data.note
+    
+                    await DoctorInfor.save();
+                }else{//create
+                    await db.Doctor_infor.create({
+                        doctorId : data.doctorId,
+                        priceId : data.selectedPrice,
+                        provinceId : data.selectedProvince,
+                        paymentId : data.selectedPayment,
+                        nameClinic : data.nameClinic,
+                        addressClinic : data.addressClinic,
+                        note : data.note,
+                    })
+                }
             }
+
+
+
         } catch (error) {
             console.log(error)
             thatbai(error)
@@ -126,10 +161,19 @@ let getDetailDoctorByIdService = (id) => {
                         exclude : ['password']
                     },
                     include : [
-                        { model:db.Markdown},
+                        { model:db.Markdown,},
                         { model:db.Allcode, as : 'positionData', attributes : ['valueEn', 'valueVi'] },
+                        { 
+                            model:db.Doctor_infor,
+                            include : [
+                                { model:db.Allcode, as : 'priceTypeData', attributes : ['valueEn', 'valueVi'] },
+                                { model:db.Allcode, as : 'provinceTypeData', attributes : ['valueEn', 'valueVi'] },
+                                { model:db.Allcode, as : 'paymentTypeData', attributes : ['valueEn', 'valueVi'] }
+                            ]
+                        },
 
                     ],
+
                     // raw : true,
                     raw : false,
                     nest : true
@@ -221,6 +265,12 @@ let getScheduleByDate = (doctorId, date) => {
 
                 let data = await db.Schedule.findAll({
                     where : {doctorId : doctorId, date : date },
+                    include : [
+                        { model:db.Allcode, as : 'timeTypeData', attributes : ['valueEn', 'valueVi'] },
+                    ],
+                    // raw : true,
+                    raw : false,
+                    nest : true
                 })
 
                 thanhcong({
@@ -235,11 +285,103 @@ let getScheduleByDate = (doctorId, date) => {
     })
 }
 
+let getExtraInforDoctorById = (id) => {
+    return new Promise( async (thanhcong,thatbai)=>{
+        try {
+            if(!id){
+                thanhcong({
+                    errCode : -1,
+                    message : "thiếu tham số"
+                })
+            }else{
+                let data = await db.Doctor_infor.findOne({
+                    where : {doctorId : id},
+                    include : [
+                        { model:db.Allcode, as : 'priceTypeData', attributes : ['valueEn', 'valueVi'] },
+                        { model:db.Allcode, as : 'provinceTypeData', attributes : ['valueEn', 'valueVi'] },
+                        { model:db.Allcode, as : 'paymentTypeData', attributes : ['valueEn', 'valueVi'] }
+                    ],
+                    raw : false,
+                    nest : true                       
+                })
+
+                if(data) {
+                    thanhcong({
+                        errCode : 0,
+                        data : data
+                    })
+                }else{
+                    thanhcong({
+                        errCode  : -2,
+                        data : {}
+                    })
+                }
+
+            }
+        } catch (error) {
+            console.log(error)
+            thatbai(error)
+        }
+    })
+}
+
+let getProfileDoctorbyId = (id) => {
+    return new Promise( async (thanhcong,thaibai)=>{
+        try {
+            if(!id){
+                thanhcong({
+                    errCode : 1,
+                    errCode : "thiếu tham số"
+                })
+            }else{
+                let data = await db.User.findOne({
+                    where : {id : id},
+                    attributes : {
+                        exclude : ['password']
+                    },
+                    include : [
+                        { model:db.Markdown,},
+                        { model:db.Allcode, as : 'positionData', attributes : ['valueEn', 'valueVi'] },
+                        { 
+                            model:db.Doctor_infor,
+                            include : [
+                                { model:db.Allcode, as : 'priceTypeData', attributes : ['valueEn', 'valueVi'] },
+                                { model:db.Allcode, as : 'paymentTypeData', attributes : ['valueEn', 'valueVi'] },
+                                { model:db.Allcode, as : 'provinceTypeData', attributes : ['valueEn', 'valueVi'] }
+                            ]
+                        },
+
+                    ],
+
+                    // raw : true,
+                    raw : false,
+                    nest : true 
+                })
+
+                if(data && data.image){ // xử lý ảnh bên db
+                    data.image = new Buffer(data.image, 'base64').toString('binary'); // giải mã từ Buffer -> về ảnh ra view
+                }
+
+                thanhcong({
+                    errCode : 0,
+                    data : data
+                })
+            }
+        } catch (error) {
+            console.log(error)
+            thatbai()
+        }
+    })
+}
+
+
 module.exports = {
     getTopdoctorHome,
     getAllDoctors,
     saveDetailInfoDoctor,
     getDetailDoctorByIdService,
     bulkCreateSchedule,
-    getScheduleByDate
+    getScheduleByDate,
+    getExtraInforDoctorById,
+    getProfileDoctorbyId
 }
